@@ -1,36 +1,32 @@
-// Entry point for the "Sum up 26 November's world news in one image" bounty.
-// The rendered image lives in the repository as entry.png, next to this file.
-// All this program has to do is place an exact copy of it into the
-// directory the grader hands us, so the submitted image is the one we drew.
+// The World in One Day — 26 November 2026, second edition. Entry program
+// for make.fun's "Sum up 26 November's world news in one image" bounty
+// (Node 22, standard library only). The image was drawn at build time by
+// draw_day.py and ships in this repository as entry.png; this program's
+// only job is to place that exact file into the output directory the
+// grader provides, so the two runs the grader does write byte-identical
+// files.
+//
+// Run outside the grader with:
+//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, existsSync, mkdirSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { copyFileSync, mkdirSync, statSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-// Where the entry image lives: the same folder as this script.
-const scriptFolder = dirname(fileURLToPath(import.meta.url));
-const sourceImage = join(scriptFolder, "entry.png");
+const here = dirname(fileURLToPath(import.meta.url));
+const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const imagePath = join(here, 'entry.png');
 
-// The grader tells us where to write via MAKEFUN_OUTPUT_DIR.
-// Fall back to /output when the variable is not set.
-const targetFolder = resolve(process.env.MAKEFUN_OUTPUT_DIR ?? "/output");
-const targetImage = join(targetFolder, "entry.png");
-
-// The bounty caps the image at 1 MiB; refuse to hand over anything bigger.
-const MAX_BYTES = 1024 * 1024;
-
-if (!existsSync(sourceImage)) {
-  console.error(`entry.png not found next to main.ts (${sourceImage})`);
-  process.exit(1);
+const image = statSync(imagePath);
+if (image.size > 1024 * 1024) {
+  throw new Error('entry.png is over the 1 MiB limit: ' + image.size + ' bytes');
 }
 
-const size = statSync(sourceImage).size;
-if (size > MAX_BYTES) {
-  console.error(`entry.png is ${size} bytes, over the 1 MiB limit`);
-  process.exit(1);
-}
+mkdirSync(outputDir, { recursive: true });
+const destination = join(outputDir, 'entry.png');
+copyFileSync(imagePath, destination);
 
-mkdirSync(targetFolder, { recursive: true });
-copyFileSync(sourceImage, targetImage);
-
-console.log(`Wrote ${targetImage} (${size} bytes)`);
+const written = statSync(destination);
+console.log(
+  'entry.png (' + written.size + ' bytes) copied to ' + destination,
+);
